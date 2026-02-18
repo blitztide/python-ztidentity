@@ -1,6 +1,6 @@
 [project]
 name = "python-ztidentity"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
   { name="David Elliott", email="david.elliott3040@gmail.com" },
 ]
@@ -17,12 +17,16 @@ classifiers = [
 license = "BSD-2-Clause"
 license-files = ["LICEN[CS]E*"]
 [project.optional-dependencies]
-test = [ "pytest" ]
+test = [
+  "pytest",
+  "build",
+  "twine"]
 [project.urls]
 Homepage = "https://github.com/blitztide/python-ztidentity"
 Issues = "https://github.com/blitztide/python-ztidentity/issues"
 [build-system]
 requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
-[tool.setuptools]
-py-modules = ["ztidentity"]
+[tool.setuptools.packages.find]
+where = ["."]       # folder where your modules live
+include = ["ztidentity*"]
