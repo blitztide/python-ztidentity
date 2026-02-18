@@ -1,0 +1,28 @@
+[project]
+name = "python-ztidentity"
+version = "0.0.1"
+authors = [
+  { name="David Elliott", email="david.elliott3040@gmail.com" },
+]
+description = "Pythonic Implementation of the ZeroTier Identity Cryptography"
+dependencies = [
+  "PyCryptodome"
+]
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "BSD-2-Clause"
+license-files = ["LICEN[CS]E*"]
+[project.optional-dependencies]
+test = [ "pytest" ]
+[project.urls]
+Homepage = "https://github.com/blitztide/python-ztidentity"
+Issues = "https://github.com/blitztide/python-ztidentity/issues"
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools]
+py-modules = ["ztidentity"]
