@@ -25,9 +25,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import hashlib
-from ztidentity.salsa20 import salsa20_xor
 from Crypto.PublicKey import ECC
 from Crypto.Random import get_random_bytes
+from Crypto.Cipher import Salsa20
 
 ZT_IDENTITY_GEN_MEMORY = 2 * 1024 * 1024  # 2M block
 
@@ -77,57 +77,54 @@ def ComputeHash(public_key: bytes) -> bytes:
     Memory Hard Hash computation
     This is to slow down attacker generation of addresses
     """
-    s512 = bytearray(hashlib.sha512(public_key).digest())
+    digest = bytearray(hashlib.sha512(public_key).digest())
+
+    # Initialize memory
     genmem = bytearray(ZT_IDENTITY_GEN_MEMORY)
 
-    s20key = bytes(s512[0:32])
-    s20ctr = bytearray(16)
-    s20ctr[0:8] = s512[32:40]
+    # Salsa20:
+    # key = first 32 bytes
+    # nonce = next 8 bytes
+    key = bytes(digest[:32])
+    nonce = bytes(digest[32:40])
 
-    s20ctri = 0
+    cipher = Salsa20.new(key=key, nonce=nonce)
 
-    # first block
-    genmem[0:64] = salsa20_xor(
-        genmem[0:64],
-        bytes(s20ctr),
-        s20key
-    )
-    s20ctri += 1
+    # First 64 bytes
+    genmem[0:64] = cipher.encrypt(genmem[0:64])
 
+    # Fill memory CBC-style
     for i in range(64, ZT_IDENTITY_GEN_MEMORY, 64):
-        s20ctr[8:16] = s20ctri.to_bytes(8, "little")
-        genmem[i:i+64] = salsa20_xor(
-            genmem[i-64:i],
-            bytes(s20ctr),
-            s20key
-        )
-        s20ctri += 1
+        k = i - 64
+        # Copy previous 64 bytes
+        genmem[i:i+64] = genmem[k:k+64]
 
-    tmp = bytearray(8)
+        # Encrypt in place
+        genmem[i:i+64] = cipher.encrypt(genmem[i:i+64])
+
+    # Final mixing phase
+    total_words = ZT_IDENTITY_GEN_MEMORY // 8
     i = 0
 
-    while i < ZT_IDENTITY_GEN_MEMORY:
-        idx1 = (int.from_bytes(genmem[i:i+8], "big") & 7) * 8
-        i += 8
+    while i < total_words:
+        # Read big-endian 64-bit values
+        idx1 = int.from_bytes(genmem[i*8:(i+1)*8], "big") % 8
+        i += 1
 
-        idx2 = (
-            int.from_bytes(genmem[i:i+8], "big")
-            % (ZT_IDENTITY_GEN_MEMORY // 8)
-        ) * 8
-        i += 8
+        idx2 = int.from_bytes(genmem[i*8:(i+1)*8], "big") % total_words
+        i += 1
 
-        gm = genmem[idx2:idx2+8]
-        d = s512[idx1:idx1+8]
+        idx1 *= 8
+        idx2 *= 8
 
-        tmp[:] = gm
-        genmem[idx2:idx2+8] = d
-        s512[idx1:idx1+8] = tmp
+        tmp = genmem[idx2:idx2+8]
+        genmem[idx2:idx2+8] = digest[idx1:idx1+8]
+        digest[idx1:idx1+8] = tmp
 
-        s20ctr[8:16] = s20ctri.to_bytes(8, "little")
-        s512[:] = salsa20_xor(s512, bytes(s20ctr), s20key)
-        s20ctri += 1
+        # Encrypt digest in place
+        digest[:] = cipher.encrypt(bytes(digest))
 
-    return bytes(s512)
+    return bytes(digest)
 
 
 def GenerateKeys() -> (bytes, bytes):

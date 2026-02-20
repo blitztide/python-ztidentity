@@ -1,6 +1,6 @@
 [project]
 name = "python-ztidentity"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
   { name="David Elliott", email="david.elliott3040@gmail.com" },
 ]
